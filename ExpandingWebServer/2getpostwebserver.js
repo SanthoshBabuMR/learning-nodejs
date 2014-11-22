@@ -21,7 +21,7 @@ function load_album_list( callback ) {
 		var only_dirs = [];
 		(function iterator( index ) {
 			if( index === directories.length ) {
-				callback( null, { albums: only_dirs } );
+				callback( null, only_dirs );
 				return;		
 			}
 			fs.stat( "albums/" + directories[index], function( err, stats ) {
@@ -30,9 +30,7 @@ function load_album_list( callback ) {
 					return;
 				}
 				if( stats.isDirectory() === true ) {
-					only_dirs.push( {
-						"name": directories[index] 
-					} );
+					only_dirs.push( directories[index] );
 				}
 				iterator( index + 1);	
 			} );			
@@ -47,78 +45,13 @@ function load_album( album, page, size, callback ) {
 			callback( err, null );
 			return;
 		}
-		var photos = [];
-		for( var i=0,len=list.length; i<len; i++ ) {
-			photos.push( {
-				filename: list[i],
-				short_name: album
-			} );
-		}
 		if( page !== undefined && size !== undefined ) {
-			var output = photos.slice( page*size, (page*size+size));
-			callback( null, { album_data : { photos : output } } );
+			var output = list.slice( page*size, (page*size+size));
+			callback( null, output );
 			return;
 		}
 		callback( null, list )
 	} );
-}
-
-function serve_page( req, res ) {
-	var core_url = req.parsed_url.pathname;
-	var page = core_url.split("/");
-	page = page[page.length-1]
-	if( page !== "home" ) {
-		page = "album";
-	} 
-	fs.readFile( "basic.html", function( err, contents ) {
-		if( err ) {
-			handle_error( err, res );
-			return;
-		}
-		contents = contents.toString( "utf-8" );
-		contents = contents.replace( "{{PAGE_NAME}}", page );
-		res.writeHead( 200, { "Content-Type": "text/html" } );
-		res.end( contents );
-	} );
-}
-
-function serve_static_file(file, res) {
-	fs.exists( file, function( exists ) {
-		if( !exists ) {
-			handle_error( "file_not_found", res );
-			return;
-		}
-		var readStream = fs.createReadStream( file );
-	    readStream.on( "error", function( err ) {
-			handle_error( err, res );
-			return;
-		} );
-
-		var file_type = content_type( file );
-
-		res.writeHead( 200, {
-			"Content-Type": file_type
-		} );
-		readStream.on( "readable", function() {
-			var d = readStream.read();
-			res.write( d );
-		} );
-		readStream.on( "end", function() {
-			//console.log( "'" + file + "' has been read. closing read stream" );
-			res.end();
-		} );
-	} );    
-}
-
-function content_type( file ) {
-	switch( path.extname( file ) ) {
-		case ".jpg" : case ".jpeg": return "image/jpg";
-		case ".html": case ".htm" : return "text/html";
-		case ".css" : return "text/css";
-		case ".js"  : return "text/javascript";
-		case ".mp4" : return "video/mp4";
-		default     : return "text/plain";
-	}
 }
 
 function handle_rename( req, res ) {
@@ -180,37 +113,26 @@ function handle_album( req, res ) {
 	} );
 }
 
+
 function handle_incoming_request( req, res ) {
-	//console.log( "INCOMING REQUEST ");
-	//console.log( "url    : " + req.url );
-	//console.log( "method : " + req.method );
+	console.log( "INCOMING REQUEST ");
+	console.log( "url    : " + req.url );
+	console.log( "method : " + req.method );
 	req.parsed_url = url.parse( req.url, true );
 	var core_url   = req.parsed_url.pathname;
 	var method = req.method;
 
-	if( method.toLowerCase() === "post" && core_url.match(/^\/albums\/.*rename\.json/) !== null ) {
+	if( method.toLowerCase() === "post" && core_url.match(/\/albums\/.*rename\.json/) !== null ) {
 		handle_rename( req, res );
-	}
-	else if( core_url.match(/^\/pages\/.*/) !== null ) {
-		serve_page( req, res );
-	}
-	else if( core_url.match(/^\/templates\/.*/) !== null ) {
-		serve_static_file( "templates/" + path.basename( req.url ), res );
-	}
-	else if( core_url.match(/^\/contents\/.*/) !== null ) {
-		serve_static_file( "contents/" + path.basename( req.url ), res );
 	}
 	else if( core_url === "/albums.json" ) {
 		handle_album_list( req, res );
 	}
-	else if ( core_url.match(/^\/albums\/.*\./) !== null ) {
+	else if ( core_url.match(/\/albums\/.*\.json/) !== null ) {
 		handle_album( req, res );
 	}
-	else if ( core_url === "/favicon.ico" ) {
-		handle_success( "", res );
-	}
 	else {
-		handle_error( "Invalid Request URL", res);
+		handle_error( "Invalid Request", res);
 	}
 }
 
@@ -239,4 +161,4 @@ function handle_success( data, res ) {
 	}
 }
 
-http.createServer( handle_incoming_request ).listen( 9234 );
+http.createServer( handle_incoming_request ).listen( 9234 ); 
