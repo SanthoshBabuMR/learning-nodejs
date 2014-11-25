@@ -24,7 +24,6 @@ exports.album_by_name = function( req, res ) {
 	var album_name = req.params.album_name;
 
 	load_album( album_name, page_num, page_size, function( err, album_contents ) {
-		console.log( album_contents )
 		if( err && err.message === "no_such_album" ) {
 			helpers.send_failure( res, 404, err );
 		}
@@ -76,8 +75,6 @@ function load_album( album, page, size, callback ) {
             }
 			return;
 		}
-		var aindex = 0,
-bindex = 0;
 		var only_files = [];
 		async.forEach(
             list,
